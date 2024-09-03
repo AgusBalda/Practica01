@@ -10,11 +10,12 @@ namespace Practica01.Domain
     {
         public int Codigo { get; set; }
         public DateTime Fecha {  get; set; }
-        public int FormaPago { get; set; }
+        public int Id_Forma_Pago { get; set; }
         public string Cliente { get; set; }
+        public bool Activo {  get; set; }
         public override string ToString()
         {
-            return "[" + Codigo + "]" + Cliente;
+            return "[" + Codigo + "]" + Cliente + " Fecha " + Fecha.Date + " estado:" + Activo;
         }
     }
 }

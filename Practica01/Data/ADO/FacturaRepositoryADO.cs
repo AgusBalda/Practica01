@@ -4,11 +4,12 @@ using System.Linq;
 using System.Text;
 using Practica01.Domain;
 using System.Threading.Tasks;
-using System.Data; 
+using System.Data;
 using System.Data.SqlClient;
 using Practica01.Data.Utils;
+using Practica01.Data.Interfaz;
 
-namespace Practica01.Data
+namespace Practica01.Data.ADO
 {
     internal class FacturaRepositoryADO : IFacturaRepository
     {
@@ -22,7 +23,7 @@ namespace Practica01.Data
         public bool Delete(int id)
         {
             var parameters = new List<ParametersSQL>();
-            parameters.Add(new ParametersSQL("@codigo", id));
+            parameters.Add(new ParametersSQL("@id", id));
             int rows = DataHelper.GetInstance().ExecuteSPDML("SP_REGISTRAR_BAJA_FACTURA", parameters);
             return rows == 1;
         }
@@ -34,17 +35,18 @@ namespace Practica01.Data
             var t = helper.ExecuteSPQuery("SP_RECUPERAR_FACTURAS", null);
             foreach (DataRow row in t.Rows)
             {
-                int codigo = Convert.ToInt32(row["id_factura"]);
+                int codigo = Convert.ToInt32(row["id"]);
                 string cliente = row["cliente"].ToString();
-                int formapago = Convert.ToInt32(row["forma_pago"]);
+                int formapago = Convert.ToInt32(row["id_forma_pago"]);
                 DateTime fecha = Convert.ToDateTime(row["fecha"]);
-
+                bool activo = Convert.ToBoolean(row["esta_activo"]);
                 Factura oFactura = new Factura()
                 {
                     Codigo = codigo,
                     Cliente = cliente,
-                    FormaPago = formapago,
-                    Fecha = fecha
+                    Id_Forma_Pago = formapago,
+                    Fecha = fecha,
+                    Activo = activo
                 };
                 lst.Add(oFactura);
             }
@@ -54,23 +56,24 @@ namespace Practica01.Data
         public Factura GetById(int id)
         {
             var parameters = new List<ParametersSQL>();
-            parameters.Add(new ParametersSQL("@nroFactura", id));
-            DataTable t = DataHelper.GetInstance().ExecuteSPQuery("SP_RECUPERAR_FACTURAS_POR_CODIGO", parameters);
+            parameters.Add(new ParametersSQL("@id", id));
+            DataTable t = DataHelper.GetInstance().ExecuteSPQuery("SP_RECUPERAR_FACTURA_CODIGO", parameters);
 
             if (t != null && t.Rows.Count == 1)
             {
                 DataRow row = t.Rows[0];
-                int codigo = Convert.ToInt32(row["id_factura"]);
+                int codigo = Convert.ToInt32(row["id"]);
                 string cliente = row["cliente"].ToString();
-                int formapago = Convert.ToInt32(row["forma_pago"]);
+                int formapago = Convert.ToInt32(row["id_forma_pago"]);
                 DateTime fecha = Convert.ToDateTime(row["fecha"]);
-
+                bool activo = Convert.ToBoolean(row["esta_activo"]);
                 Factura oFactura = new Factura()
                 {
                     Codigo = codigo,
                     Cliente = cliente,
-                    FormaPago = formapago,
-                    Fecha = fecha
+                    Id_Forma_Pago = formapago,
+                    Fecha = fecha,
+                    Activo = activo
                 };
                 return oFactura;
 
@@ -78,12 +81,10 @@ namespace Practica01.Data
             return null;
         }
 
-        public bool Save(Factura oFactura, int id_articulo, int cantidad)
+        public bool Save(Factura oFactura)
         {
-            // nose como agregar tantos articulos como quiera el usuario en sp pero puedo hacer que se agregen
-            // uno a la ves por cada peticion
             bool result = true;
-            string query = "SP_GUARDAR_PRODUCTO";
+            string query = "SP_GUARDAR_FACTURA";
 
             try
             {
@@ -91,14 +92,12 @@ namespace Practica01.Data
                 {
                     _connection.Open();
                     var cmd = new SqlCommand(query, _connection);
-                    cmd.CommandType = System.Data.CommandType.StoredProcedure;
-                    cmd.Parameters.AddWithValue("@id_factura", oFactura.Codigo);
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    cmd.Parameters.AddWithValue("@id", oFactura.Codigo);
                     cmd.Parameters.AddWithValue("@cliente", oFactura.Cliente);
-                    cmd.Parameters.AddWithValue("@forma_pago", oFactura.FormaPago);
+                    cmd.Parameters.AddWithValue("@forma_pago", oFactura.Id_Forma_Pago);
                     cmd.Parameters.AddWithValue("@fecha", oFactura.Fecha);
-                    cmd.Parameters.AddWithValue("@id_articulo", id_articulo);
-                    cmd.Parameters.AddWithValue("@cantidad", cantidad);
-                    result = cmd.ExecuteNonQuery() == 1; 
+                    result = cmd.ExecuteNonQuery() == 1;
                 }
             }
             catch (SqlException sqlEx)
@@ -107,7 +106,7 @@ namespace Practica01.Data
             }
             finally
             {
-                if (_connection != null && _connection.State == System.Data.ConnectionState.Open)
+                if (_connection != null && _connection.State == ConnectionState.Open)
                 {
                     _connection.Close();
                 }
